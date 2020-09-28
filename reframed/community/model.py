@@ -150,4 +150,3 @@ class Community(object):
             comm_model.add_reaction(rxn)
 
         return comm_model
-

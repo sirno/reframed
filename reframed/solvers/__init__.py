@@ -4,20 +4,23 @@ solvers = dict()
 
 try:
     from .gurobi_solver import GurobiSolver
-    solvers['gurobi'] = GurobiSolver
+
+    solvers["gurobi"] = GurobiSolver
 except ImportError:
     pass
 
 
 try:
     from .cplex_solver import CplexSolver
-    solvers['cplex'] = CplexSolver
+
+    solvers["cplex"] = CplexSolver
 except ImportError:
     pass
 
 try:
     from .optlang_solver import OptLangSolver
-    solvers['optlang'] = OptLangSolver
+
+    solvers["optlang"] = OptLangSolver
 except ImportError:
     pass
 
@@ -32,7 +35,7 @@ def get_default_solver():
     if default_solver:
         return default_solver
 
-    solver_order = ['cplex', 'gurobi', 'optlang']
+    solver_order = ["gurobi", "cplex", "optlang"]
 
     for solver in solver_order:
         if solver in list(solvers.keys()):

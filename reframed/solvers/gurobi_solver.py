@@ -19,13 +19,13 @@ status_mapping = {
     GRB.OPTIMAL: Status.OPTIMAL,
     GRB.UNBOUNDED: Status.UNBOUNDED,
     GRB.INFEASIBLE: Status.INFEASIBLE,
-    GRB.INF_OR_UNBD: Status.INF_OR_UNB
+    GRB.INF_OR_UNBD: Status.INF_OR_UNB,
 }
 
 vartype_mapping = {
     VarType.BINARY: GRB.BINARY,
     VarType.INTEGER: GRB.INTEGER,
-    VarType.CONTINUOUS: GRB.CONTINUOUS
+    VarType.CONTINUOUS: GRB.CONTINUOUS,
 }
 
 parameter_mapping = {
@@ -36,7 +36,7 @@ parameter_mapping = {
     Parameter.MIP_ABS_GAP: GRB.Param.MIPGapAbs,
     Parameter.MIP_REL_GAP: GRB.Param.MIPGap,
     Parameter.POOL_SIZE: GRB.Param.PoolSolutions,
-    Parameter.POOL_GAP: GRB.Param.PoolGap
+    Parameter.POOL_GAP: GRB.Param.PoolGap,
 }
 
 
@@ -51,7 +51,9 @@ class GurobiSolver(Solver):
         if model:
             self.build_problem(model)
 
-    def add_variable(self, var_id, lb=-inf, ub=inf, vartype=VarType.CONTINUOUS, update=True):
+    def add_variable(
+        self, var_id, lb=-inf, ub=inf, vartype=VarType.CONTINUOUS, update=True
+    ):
         """ Add a variable to the current problem.
 
         Arguments:
@@ -67,17 +69,19 @@ class GurobiSolver(Solver):
 
         if var_id in self.var_ids:
             var = self.problem.getVarByName(var_id)
-            var.setAttr('lb', lb)
-            var.setAttr('ub', ub)
-            var.setAttr('vtype', vartype_mapping[vartype])
+            var.setAttr("lb", lb)
+            var.setAttr("ub", ub)
+            var.setAttr("vtype", vartype_mapping[vartype])
         else:
-            self.problem.addVar(name=var_id, lb=lb, ub=ub, vtype=vartype_mapping[vartype])
+            self.problem.addVar(
+                name=var_id, lb=lb, ub=ub, vtype=vartype_mapping[vartype]
+            )
             self.var_ids.append(var_id)
 
         if update:
             self.problem.update()
 
-    def add_constraint(self, constr_id, lhs, sense='=', rhs=0, update=True):
+    def add_constraint(self, constr_id, lhs, sense="=", rhs=0, update=True):
         """ Add a constraint to the current problem.
 
         Arguments:
@@ -88,15 +92,17 @@ class GurobiSolver(Solver):
             update (bool): update problem immediately (default: True)
         """
 
-        grb_sense = {'=': GRB.EQUAL,
-                     '<': GRB.LESS_EQUAL,
-                     '>': GRB.GREATER_EQUAL}
+        grb_sense = {"=": GRB.EQUAL, "<": GRB.LESS_EQUAL, ">": GRB.GREATER_EQUAL}
 
         if constr_id in self.constr_ids:
             constr = self.problem.getConstrByName(constr_id)
             self.problem.remove(constr)
 
-        expr = quicksum(coeff * self.problem.getVarByName(r_id) for r_id, coeff in lhs.items() if coeff)
+        expr = quicksum(
+            coeff * self.problem.getVarByName(r_id)
+            for r_id, coeff in lhs.items()
+            if coeff
+        )
 
         self.problem.addConstr(expr, grb_sense[sense], rhs, constr_id)
         self.constr_ids.append(constr_id)
@@ -148,7 +154,7 @@ class GurobiSolver(Solver):
         """ Update internal structure. Used for efficient lazy updating. """
         self.problem.update()
 
-    def set_objective(self, linear=None, quadratic=None, minimize=True):
+    def set_objective(self, linear=None, quadratic=None, secondary=None, minimize=True):
         """ Set a predefined objective for this problem.
 
         Args:
@@ -161,11 +167,14 @@ class GurobiSolver(Solver):
 
         """
 
+        if quadratic and secondary:
+            warn(f"Can not optimize secondary and quadratic expressions.")
+
         lin_obj = []
         quad_obj = []
+        sec_obj = []
 
         if linear:
-
             if isinstance(linear, str):
                 lin_obj = [1.0 * self.problem.getVarByName(linear)]
                 if linear not in self.var_ids:
@@ -186,15 +195,47 @@ class GurobiSolver(Solver):
                 elif r_id2 not in self.var_ids:
                     warn(f"Objective variable not previously declared: {r_id2}")
                 elif val != 0:
-                    quad_obj.append(val * self.problem.getVarByName(r_id1) * self.problem.getVarByName(r_id2))
+                    quad_obj.append(
+                        val
+                        * self.problem.getVarByName(r_id1)
+                        * self.problem.getVarByName(r_id2)
+                    )
 
-        obj_expr = quicksum(quad_obj + lin_obj)
-        sense = GRB.MINIMIZE if minimize else GRB.MAXIMIZE
+        if secondary:
+            if isinstance(linear, str):
+                sec_obj = [1.0 * self.problem.getVarByName(secondary)]
+                if linear not in self.var_ids:
+                    warn(f"Objective variable not previously declared: {secondary}")
+            else:
+                sec_obj = []
+                for r_id, val in secondary.items():
+                    if r_id not in self.var_ids:
+                        warn(f"Objective variable not previously declared: {r_id}")
+                    elif val != 0:
+                        sec_obj.append(val * self.problem.getVarByName(r_id))
 
-        self.problem.setObjective(obj_expr, sense)
+        if secondary:
+            self.problem.setObjectiveN(quicksum(lin_obj), 0, 1)
+            self.problem.setObjectiveN(quicksum(sec_obj), 1, 0)
+        else:
+            obj_expr = quicksum(quad_obj + lin_obj)
+            sense = GRB.MINIMIZE if minimize else GRB.MAXIMIZE
+            self.problem.setObjective(obj_expr, sense)
 
-    def solve(self, linear=None, quadratic=None, minimize=None, model=None, constraints=None, get_values=True,
-              shadow_prices=False, reduced_costs=False, pool_size=0, pool_gap=None):
+    def solve(
+        self,
+        linear=None,
+        quadratic=None,
+        secondary=None,
+        minimize=None,
+        model=None,
+        constraints=None,
+        get_values=True,
+        shadow_prices=False,
+        reduced_costs=False,
+        pool_size=0,
+        pool_gap=None,
+    ):
         """ Solve the optimization problem.
 
         Arguments:
@@ -231,7 +272,9 @@ class GurobiSolver(Solver):
                     warn(f"Constrained variable '{r_id}' not previously declared")
             problem.update()
 
-        self.set_objective(linear, quadratic, minimize)
+        self.set_objective(
+            linear=linear, quadratic=quadratic, secondary=secondary, minimize=minimize
+        )
 
         # run the optimization
         if pool_size <= 1:
@@ -248,15 +291,24 @@ class GurobiSolver(Solver):
                 if get_values:
                     if isinstance(get_values, Iterable):
                         get_values = list(get_values)
-                        values = {r_id: problem.getVarByName(r_id).X for r_id in get_values}
+                        values = {
+                            r_id: problem.getVarByName(r_id).X for r_id in get_values
+                        }
                     else:
-                        values = {r_id: problem.getVarByName(r_id).X for r_id in self.var_ids}
+                        values = {
+                            r_id: problem.getVarByName(r_id).X for r_id in self.var_ids
+                        }
 
                 if shadow_prices:
-                    s_prices = {m_id: problem.getConstrByName(m_id).Pi for m_id in self.constr_ids}
+                    s_prices = {
+                        m_id: problem.getConstrByName(m_id).Pi
+                        for m_id in self.constr_ids
+                    }
 
                 if reduced_costs:
-                    r_costs = {r_id: problem.getVarByName(r_id).RC for r_id in self.var_ids}
+                    r_costs = {
+                        r_id: problem.getVarByName(r_id).RC for r_id in self.var_ids
+                    }
 
                 solution = Solution(status, message, fobj, values, s_prices, r_costs)
             else:
@@ -307,9 +359,14 @@ class GurobiSolver(Solver):
             if get_values:
                 if isinstance(get_values, Iterable):
                     get_values = list(get_values)
-                    values = {r_id: self.problem.getVarByName(r_id).Xn for r_id in get_values}
+                    values = {
+                        r_id: self.problem.getVarByName(r_id).Xn for r_id in get_values
+                    }
                 else:
-                    values = {r_id: self.problem.getVarByName(r_id).Xn for r_id in self.var_ids}
+                    values = {
+                        r_id: self.problem.getVarByName(r_id).Xn
+                        for r_id in self.var_ids
+                    }
             else:
                 values = None
             sol = Solution(fobj=obj, values=values)
@@ -329,7 +386,7 @@ class GurobiSolver(Solver):
             grb_param = parameter_mapping[parameter]
             self.problem.setParam(grb_param, value)
         else:
-            raise Exception('Parameter unknown (or not yet supported).')
+            raise Exception("Parameter unknown (or not yet supported).")
 
     def set_logging(self, enabled=False):
         """ Enable or disable log output:
@@ -338,7 +395,7 @@ class GurobiSolver(Solver):
             enabled (bool): turn logging on (default: False)
         """
 
-        self.problem.setParam('OutputFlag', 1 if enabled else 0)
+        self.problem.setParam("OutputFlag", 1 if enabled else 0)
 
     def write_to_file(self, filename):
         """ Write problem to file:

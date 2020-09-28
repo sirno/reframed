@@ -172,9 +172,7 @@ def minimal_medium(
 
     else:
         if milp:
-            objective = {"y_" + r_id: 1 for r_id in exchange_reactions}.update(
-                {model.biomass_reaction: -1e-3}
-            )
+            objective = {"y_" + r_id: 1 for r_id in exchange_reactions}
         else:
             objective = {"f_" + r_id: 1 for r_id in exchange_reactions}
 
@@ -200,6 +198,8 @@ def minimal_medium(
         }
 
     constraints[model.biomass_reaction] = (min_growth, inf)
+
+    objective = {**objective, **{model.biomass_reaction: -1e-3}}
 
     if n_solutions == 1:
 
