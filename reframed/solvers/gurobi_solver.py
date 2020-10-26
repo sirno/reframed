@@ -1,9 +1,9 @@
 from collections import Iterable
-from .solver import Solver, VarType, Parameter, default_parameters
-from .solution import Solution, Status
-from gurobipy import Model as GurobiModel, GRB, quicksum
 from math import inf
 from warnings import warn
+from gurobipy import Model as GurobiModel, GRB, quicksum
+from .solver import Solver, VarType, Parameter, default_parameters
+from .solution import Solution, Status
 
 
 def infinity_fix(val):
@@ -98,6 +98,10 @@ class GurobiSolver(Solver):
             constr = self.problem.getConstrByName(constr_id)
             self.problem.remove(constr)
 
+        # for r_id, coeff in lhs.items():
+        #     if coeff:
+        #         print(r_id)
+        #         coeff * self.problem.getVarByName(r_id)
         expr = quicksum(
             coeff * self.problem.getVarByName(r_id)
             for r_id, coeff in lhs.items()
@@ -235,6 +239,7 @@ class GurobiSolver(Solver):
         reduced_costs=False,
         pool_size=0,
         pool_gap=None,
+        # pool_search_mode=0,
     ):
         """ Solve the optimization problem.
 
@@ -315,8 +320,7 @@ class GurobiSolver(Solver):
                 solution = Solution(status, message)
 
         else:
-
-            problem.setParam(GRB.Param.PoolSearchMode, 2)
+            # problem.setParam(GRB.Param.PoolSearchMode, 2)
             self.set_parameter(Parameter.POOL_SIZE, pool_size)
 
             if pool_gap:
