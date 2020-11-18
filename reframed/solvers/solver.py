@@ -35,7 +35,7 @@ class Solver(object):
     All solver interfaces should implement the methods defined in this class.
     """
 
-    def __init__(self, model=None):
+    def __init__(self, model=None, **kwargs):
         self.problem = None
         self.var_ids = []
         self.constr_ids = []

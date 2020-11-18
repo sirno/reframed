@@ -63,7 +63,7 @@ def set_default_solver(solvername):
         raise RuntimeError(f"Solver {solvername} not available.")
 
 
-def solver_instance(model=None):
+def solver_instance(model=None, **kwargs):
     """ Returns a new instance of the currently selected solver.
 
     Arguments:
@@ -76,4 +76,4 @@ def solver_instance(model=None):
     solver = get_default_solver()
 
     if solver:
-        return solvers[solver](model)
+        return solvers[solver](model, **kwargs)
