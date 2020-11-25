@@ -161,6 +161,15 @@ class GurobiSolver(Solver):
         """ Update internal structure. Used for efficient lazy updating. """
         self.problem.update()
 
+    def _objective_from_dict(self, dictionary):
+        obj = []
+        for r_id, val in dictionary.items():
+            if r_id not in self.var_ids:
+                warn(f"Objective variable not previously declared: {r_id}")
+            elif val != 0:
+                obj.append(val * self.problem.getVarByName(r_id))
+        return obj
+
     def set_objective(self, linear=None, quadratic=None, secondary=None, minimize=True):
         """ Set a predefined objective for this problem.
 
@@ -175,11 +184,11 @@ class GurobiSolver(Solver):
         """
 
         if quadratic and secondary:
-            warn(f"Can not optimize secondary and quadratic expressions.")
+            warn("Can not optimize secondary and quadratic expressions.")
 
         lin_obj = []
         quad_obj = []
-        sec_obj = []
+        sec_objs = []
 
         if linear:
             if isinstance(linear, str):
@@ -187,12 +196,7 @@ class GurobiSolver(Solver):
                 if linear not in self.var_ids:
                     warn(f"Objective variable not previously declared: {linear}")
             else:
-                lin_obj = []
-                for r_id, val in linear.items():
-                    if r_id not in self.var_ids:
-                        warn(f"Objective variable not previously declared: {r_id}")
-                    elif val != 0:
-                        lin_obj.append(val * self.problem.getVarByName(r_id))
+                lin_obj = self._objective_from_dict(linear)
 
         if quadratic:
             quad_obj = []
@@ -209,21 +213,18 @@ class GurobiSolver(Solver):
                     )
 
         if secondary:
-            if isinstance(linear, str):
-                sec_obj = [1.0 * self.problem.getVarByName(secondary)]
+            if isinstance(secondary, str):
+                sec_objs = [[1.0 * self.problem.getVarByName(secondary)]]
                 if linear not in self.var_ids:
                     warn(f"Objective variable not previously declared: {secondary}")
+            elif isinstance(secondary, list):
+                sec_objs = [self._objective_from_list(sec) for sec in secondary]
             else:
-                sec_obj = []
-                for r_id, val in secondary.items():
-                    if r_id not in self.var_ids:
-                        warn(f"Objective variable not previously declared: {r_id}")
-                    elif val != 0:
-                        sec_obj.append(val * self.problem.getVarByName(r_id))
+                sec_objs = [self._objective_from_list(secondary)]
 
-        if secondary:
-            self.problem.setObjectiveN(quicksum(lin_obj), 0, 1)
-            self.problem.setObjectiveN(quicksum(sec_obj), 1, 0)
+            self.problem.setObjectiveN(quicksum(lin_obj), 0, len(sec_objs))
+            for idx, obj in enumerate(sec_objs):
+                self.problem.setObjectiveN(quicksum(obj), idx, len(sec_objs) - idx - 1)
         else:
             obj_expr = quicksum(quad_obj + lin_obj)
             sense = GRB.MINIMIZE if minimize else GRB.MAXIMIZE
