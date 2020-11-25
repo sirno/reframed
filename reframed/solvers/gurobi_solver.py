@@ -218,9 +218,9 @@ class GurobiSolver(Solver):
                 if linear not in self.var_ids:
                     warn(f"Objective variable not previously declared: {secondary}")
             elif isinstance(secondary, list):
-                sec_objs = [self._objective_from_list(sec) for sec in secondary]
+                sec_objs = [self._objective_from_dict(sec) for sec in secondary]
             else:
-                sec_objs = [self._objective_from_list(secondary)]
+                sec_objs = [self._objective_from_dict(secondary)]
 
             self.problem.setObjectiveN(quicksum(lin_obj), 0, len(sec_objs))
             for idx, obj in enumerate(sec_objs):
