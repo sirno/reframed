@@ -4,13 +4,15 @@ from math import inf
 
 class VarType(Enum):
     """ Enumeration of possible variable types. """
-    BINARY = 'binary'
-    INTEGER = 'integer'
-    CONTINUOUS = 'continuous'
+
+    BINARY = "binary"
+    INTEGER = "integer"
+    CONTINUOUS = "continuous"
 
 
 class Parameter(Enum):
     """ Enumeration of parameters common to all solvers. """
+
     TIME_LIMIT = 0
     FEASIBILITY_TOL = 1
     INT_FEASIBILITY_TOL = 2
@@ -33,13 +35,15 @@ class Solver(object):
     All solver interfaces should implement the methods defined in this class.
     """
 
-    def __init__(self, model=None):
+    def __init__(self, model=None, **kwargs):
         self.problem = None
         self.var_ids = []
         self.constr_ids = []
         self.model = model
 
-    def add_variable(self, var_id, lb=-inf, ub=inf, vartype=VarType.CONTINUOUS, update=True):
+    def add_variable(
+        self, var_id, lb=-inf, ub=inf, vartype=VarType.CONTINUOUS, update=True
+    ):
         """ Add a variable to the current problem.
 
         Arguments:
@@ -50,7 +54,7 @@ class Solver(object):
             update (bool): update problem immediately (default: True)
         """
 
-    def add_constraint(self, constr_id, lhs, sense='=', rhs=0, update=True):
+    def add_constraint(self, constr_id, lhs, sense="=", rhs=0, update=True):
         """ Add a constraint to the current problem.
 
         Arguments:
@@ -114,7 +118,7 @@ class Solver(object):
         """ Update internal structure. Used for efficient lazy updating. """
         pass
 
-    def set_objective(self, linear=None, quadratic=None, minimize=True):
+    def set_objective(self, linear=None, quadratic=None, secondary=None, minimize=True):
         """ Set a predefined objective for this problem.
 
         Args:
@@ -144,8 +148,20 @@ class Solver(object):
             self.add_constraint(m_id, table[m_id], update=False)
         self.update()
 
-    def solve(self, linear=None, quadratic=None, minimize=None, model=None, constraints=None, get_values=True,
-              shadow_prices=False, reduced_costs=False, pool_size=0, pool_gap=None):
+    def solve(
+        self,
+        linear=None,
+        quadratic=None,
+        secondary=None,
+        minimize=None,
+        model=None,
+        constraints=None,
+        get_values=True,
+        shadow_prices=False,
+        reduced_costs=False,
+        pool_size=0,
+        pool_gap=None,
+    ):
         """ Solve the optimization problem.
 
         Arguments:
@@ -165,7 +181,7 @@ class Solver(object):
         """
 
         # An exception is raised if the subclass does not implement this method.
-        raise Exception('Not implemented for this solver.')
+        raise Exception("Not implemented for this solver.")
 
     def get_solution_pool(self, get_values=True):
         """ Return a solution pool for MILP problems.
@@ -179,7 +195,7 @@ class Solver(object):
             list: list of Solution objects
 
         """
-        raise Exception('Not implemented for this solver.')
+        raise Exception("Not implemented for this solver.")
 
     def set_parameter(self, parameter, value):
         """ Set a parameter value for this optimization problem
@@ -189,7 +205,7 @@ class Solver(object):
             value (float): parameter value
         """
 
-        raise Exception('Not implemented for this solver.')
+        raise Exception("Not implemented for this solver.")
 
     def set_parameters(self, parameters):
         """ Set values for multiple parameters
@@ -208,7 +224,7 @@ class Solver(object):
             enabled (bool): turn logging on (default: False)
         """
 
-        raise Exception('Not implemented for this solver.')
+        raise Exception("Not implemented for this solver.")
 
     def write_to_file(self, filename):
         """ Write problem to file:
@@ -217,7 +233,4 @@ class Solver(object):
             filename (str): file path
         """
 
-        raise Exception('Not implemented for this solver.')
-
-
-
+        raise Exception("Not implemented for this solver.")

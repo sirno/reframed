@@ -43,9 +43,12 @@ parameter_mapping = {
 class GurobiSolver(Solver):
     """ Implements the gurobi solver interface. """
 
-    def __init__(self, model=None):
+    def __init__(self, model=None, env=None):
         Solver.__init__(self)
-        self.problem = GurobiModel()
+        if env:
+            self.problem = GurobiModel(env=env)
+        else:
+            self.problem = GurobiModel()
         self.set_logging(False)
         self.set_parameters(default_parameters)
         if model:
