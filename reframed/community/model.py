@@ -79,7 +79,7 @@ class Community(object):
 
             # add metabolites
             for m_id, met in model.metabolites.items():
-                # always create an local metabolite
+                # always create a local metabolite
                 new_id = rename(m_id)
                 new_met = Metabolite(new_id, met.name, rename(met.compartment))
                 new_met.metadata = met.metadata.copy()
@@ -88,7 +88,10 @@ class Community(object):
 
                 # if the metabolite is external and not yet added to the
                 # community model, add it
-                if m_id not in comm_model.metabolites:
+                if (
+                    met.compartment in old_ext_comps
+                    and m_id not in comm_model.metabolites
+                ):
                     new_met = Metabolite(m_id, met.name, ext_comp_id)
                     new_met.metadata = met.metadata.copy()
                     comm_model.add_metabolite(new_met)
@@ -106,12 +109,18 @@ class Community(object):
 
                 new_id = rename(r_id)
 
-                if rxn.reaction_type == ReactionType.EXCHANGE:
+                if rxn.reaction_type == ReactionType.EXCHANGE and r_id.startswith(
+                    "R_EX"
+                ):
                     new_id = new_id + "_INT"
+
                     m_id = list(rxn.stoichiometry.keys())[0]
+                    ext_m_id = biomass_id if r_id == model.biomass_reaction else m_id
+                    int_m_id = rename(m_id)
+
                     new_stoichiometry = {
-                        m_id: 1,
-                        rename(m_id): -1,
+                        ext_m_id: 1,
+                        int_m_id: -1,
                     }
                     new_rxn = CBReaction(
                         new_id,
