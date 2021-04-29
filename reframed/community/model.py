@@ -5,12 +5,13 @@ from warnings import warn
 
 
 class Community(object):
-    def __init__(self, community_id, models, copy_models=False):
+    def __init__(self, community_id, models, copy_models=False, suffix="_i"):
         self.id = community_id
         self.organisms = AttrOrderedDict()
         self._merged_model = None
         self.reaction_map = None
         self.metabolite_map = None
+        self.suffix = suffix
 
         model_ids = {model.id for model in models}
 
@@ -112,7 +113,7 @@ class Community(object):
                 if rxn.reaction_type == ReactionType.EXCHANGE and r_id.startswith(
                     "R_EX"
                 ):
-                    new_id = new_id + "_INT"
+                    new_id = new_id + self.suffix
 
                     m_id = list(rxn.stoichiometry.keys())[0]
                     ext_m_id = biomass_id if r_id == model.biomass_reaction else m_id
